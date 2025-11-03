@@ -1,19 +1,91 @@
 package cs285_project;
-
+import java.net.Socket;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.net.Socket;
+import javax.crypto.Cipher;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import javax.crypto.KeyAgreement;
+import javax.crypto.interfaces.DHPublicKey;
+import javax.crypto.spec.DHParameterSpec;
 
 
 public class Client {
     public static void main(String[] args) {
         try
             {
-        System.out.println("Client connecting..");
-        Socket soc = new Socket ("localhost", 8000);
-        DataOutputStream output = new DataOutputStream(soc.getOutputStream());
-        DataInputStream input = new DataInputStream(soc.getInputStream());
-        output.writeInt(123);
+                //connecting
+                System.out.println("Client connecting...");
+                Socket soc = new Socket ("localhost", 8000);
+                System.out.println("Cilent connected!");
+                
+                //data i/o
+                DataOutputStream output = new DataOutputStream(soc.getOutputStream());
+                DataInputStream input = new DataInputStream(soc.getInputStream());
+                
+                // get rsa key from server and make a new byte to store it in
+                int rsaKeyLength = input.readInt();
+                byte[] rsaPublicKeyBytes = new byte[rsaKeyLength];
+                input.readFully(rsaPublicKeyBytes);
+                
+                //rsa client side encryption
+                KeyFactory rsaKeyFactory = KeyFactory.getInstance("RSA");
+                X509EncodedKeySpec rsaKeySpec = new X509EncodedKeySpec(rsaPublicKeyBytes);
+                PublicKey rsaPublicKey = rsaKeyFactory.generatePublic(rsaKeySpec);
+                
+                //convert rsa to a public key object
+                Cipher rsaCipher = Cipher.getInstance("RSA");
+                rsaCipher.init(Cipher.ENCRYPT_MODE, rsaPublicKey);
+                
+                //get public dh key from server
+                int serverDhKeyLength = input.readInt();
+                byte[] serverDhPublicKeyBytes = new byte[serverDhKeyLength];
+                input.readFully(serverDhPublicKeyBytes);
+                
+                //server dh key to object
+                KeyFactory dhKeyFactory = KeyFactory.getInstance("DH");
+                X509EncodedKeySpec dhKeySpec = new X509EncodedKeySpec(serverDhPublicKeyBytes);
+                PublicKey serverDhPublicKey = dhKeyFactory.generatePublic(dhKeySpec);
+                
+                // dh parameters extraction 
+                DHParameterSpec dhParams = ((DHPublicKey) serverDhPublicKey).getParams();
+                System.out.println("✓ Extracted DH equation values from server key");
+                
+                // Generate client's DH key pair using server's parameters
+                KeyPairGenerator clientDhKeyGen = KeyPairGenerator.getInstance("DH");
+                clientDhKeyGen.initialize(dhParams);
+                KeyPair clientDhKeyPair = clientDhKeyGen.generateKeyPair();
+                
+                // Send client's DH public key to server
+                byte[] clientDhPublicKeyBytes = clientDhKeyPair.getPublic().getEncoded();
+                output.writeInt(clientDhPublicKeyBytes.length);
+                output.write(clientDhPublicKeyBytes);
+                output.flush();
+                
+                //Perform DH key agreement to generate shared secret
+                KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
+                keyAgreement.init(clientDhKeyPair.getPrivate());
+                keyAgreement.doPhase(serverDhPublicKey, true);
+                byte[] sharedSecret = keyAgreement.generateSecret();
+                
+                //encryption and sending
+                int originalMessage = 12345;
+                System.out.println("Original number: " + originalMessage);
+                
+                // Convert integer to bytes
+                byte[] numberBytes = java.nio.ByteBuffer.allocate(4).putInt(originalMessage).array();
+                
+                // Encrypt using RSA
+                byte[] encrypted = rsaCipher.doFinal(numberBytes);
+                
+                // Send encrypted data to server
+                output.writeInt(encrypted.length);
+                output.write(encrypted);
+                output.flush();
+           
             }
         catch(Exception e)
         {
