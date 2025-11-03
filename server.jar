@@ -1,9 +1,15 @@
 package cs285_project;
-
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import javax.crypto.Cipher;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PublicKey;
+import java.security.KeyFactory;
+import java.security.spec.X509EncodedKeySpec;
+import javax.crypto.KeyAgreement;
 
 
 public class Server {
@@ -12,14 +18,69 @@ public class Server {
         
         try
         {
-         System.out.println("Waiting for clients..");
-         ServerSocket ss = new ServerSocket(8000);   
-         Socket soc = ss.accept();
+            //generating rsa key pair
+            KeyPairGenerator rsaKeyGen = KeyPairGenerator.getInstance("RSA");
+            rsaKeyGen.initialize(2005);  
+            KeyPair rsaKeys = rsaKeyGen.generateKeyPair();
+            
+            //server side decryption
+            Cipher rsaCipher = Cipher.getInstance("RSA");
+            rsaCipher.init(Cipher.DECRYPT_MODE, rsaKeys.getPrivate());
+            
+            //going online for clients
+            System.out.println("Waiting for clients..");
+             ServerSocket ss = new ServerSocket(8000);   
+             Socket soc = ss.accept();
             System.out.println("Connection established");
-         DataOutputStream output = new DataOutputStream(soc.getOutputStream());
-         DataInputStream input = new DataInputStream(soc.getInputStream());
-         int value = input.readInt();
-            System.out.println(value);
+            
+            //creating data streams
+            DataOutputStream output = new DataOutputStream(soc.getOutputStream());
+            DataInputStream input = new DataInputStream(soc.getInputStream());
+            
+            //send rsa key to client for client sided encryption
+            byte[] rsaPublicBytes = rsaKeys.getPublic().getEncoded();
+            output.writeInt(rsaPublicBytes.length);
+            output.write(rsaPublicBytes);
+            output.flush();
+            
+            //DH key generator
+            KeyPairGenerator dhGenerator = KeyPairGenerator.getInstance("DH");
+            dhGenerator.initialize(2005);
+            KeyPair dhKeyPair = dhGenerator.generateKeyPair();
+            
+            //sending dh public key
+            byte[] serverDhpublic = dhKeyPair.getPublic().getEncoded();
+            output.writeInt(serverDhpublic.length);
+            output.write(serverDhpublic);
+            output.flush();
+            
+            // Receive client side dh public key
+            int clientDhKeyLength = input.readInt();
+            byte[] clientDhPublicKeyBytes = new byte[clientDhKeyLength];
+            input.readFully(clientDhPublicKeyBytes);
+            
+            //convert client key to object
+            KeyFactory dhKeyFactory = KeyFactory.getInstance("DH");
+            X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(clientDhPublicKeyBytes);
+            PublicKey clientDhPublic = dhKeyFactory.generatePublic(x509KeySpec);
+            
+             // Perform DH key agreement to generate shared secret
+            KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
+            keyAgreement.init(dhKeyPair.getPrivate());
+            keyAgreement.doPhase(clientDhPublic, true);
+            byte[] sharedKey = keyAgreement.generateSecret();
+            
+            //encryption & decryption
+            int encryptedLength = input.readInt();
+            byte[] encrypted = new byte[encryptedLength];
+            input.readFully(encrypted);
+            
+            //rsa decryption
+            byte[] decrypted = rsaCipher.doFinal(encrypted);
+            
+            // Convert bytes back to integer
+            int decryptedMessage = java.nio.ByteBuffer.wrap(decrypted).getInt();
+         
         }
         catch(Exception e)
         {
