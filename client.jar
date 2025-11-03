@@ -1,0 +1,24 @@
+package cs285_project;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.net.Socket;
+
+
+public class Client {
+    public static void main(String[] args) {
+        try
+            {
+        System.out.println("Client connecting..");
+        Socket soc = new Socket ("localhost", 8000);
+        DataOutputStream output = new DataOutputStream(soc.getOutputStream());
+        DataInputStream input = new DataInputStream(soc.getInputStream());
+        output.writeInt(123);
+            }
+        catch(Exception e)
+        {
+            System.out.println("ClientError");
+        }
+       
+    }
+}
