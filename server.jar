@@ -20,7 +20,7 @@ public class Server {
         {
             //generating rsa key pair
             KeyPairGenerator rsaKeyGen = KeyPairGenerator.getInstance("RSA");
-            rsaKeyGen.initialize(2005);  
+            rsaKeyGen.initialize(2048);  
             KeyPair rsaKeys = rsaKeyGen.generateKeyPair();
             
             //server side decryption
@@ -45,7 +45,7 @@ public class Server {
             
             //DH key generator
             KeyPairGenerator dhGenerator = KeyPairGenerator.getInstance("DH");
-            dhGenerator.initialize(2005);
+            dhGenerator.initialize(2048);
             KeyPair dhKeyPair = dhGenerator.generateKeyPair();
             
             //sending dh public key
