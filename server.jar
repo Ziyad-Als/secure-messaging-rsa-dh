@@ -72,6 +72,7 @@ public class server {
             for (int i = 0; i < sharedSecret.length; i++) {
             System.out.print(sharedSecret[i] + " ");
             }
+            System.out.println("");
 
             // Receive encrypted message (Base64 string)
             String encryptedBase64 = input.readUTF();
