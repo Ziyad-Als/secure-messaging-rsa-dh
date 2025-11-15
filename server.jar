@@ -67,7 +67,11 @@ public class server {
             KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
             keyAgreement.init(dhKeyPair.getPrivate());
             keyAgreement.doPhase(clientDhPublic, true);
-            byte[] sharedKey = keyAgreement.generateSecret();
+            byte[] sharedSecret = keyAgreement.generateSecret();
+            System.out.print("Shared secret bytes: ");
+            for (int i = 0; i < sharedSecret.length; i++) {
+            System.out.print(sharedSecret[i] + " ");
+            }
 
             // Receive encrypted message (Base64 string)
             String encryptedBase64 = input.readUTF();
