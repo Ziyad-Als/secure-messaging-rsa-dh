@@ -15,7 +15,7 @@ import javax.crypto.spec.DHParameterSpec;
 import java.util.Base64;
 import java.util.Scanner;
 
-public class Client {
+public class client {
     public static void main(String[] args) {
         try {
             // Connect to server
