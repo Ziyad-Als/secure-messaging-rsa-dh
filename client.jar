@@ -15,7 +15,7 @@ import javax.crypto.spec.DHParameterSpec;
 import java.util.Base64;
 import java.util.Scanner;
 
-public class client {
+public class Client {
     public static void main(String[] args) {
         try {
             // Connect to server
@@ -65,6 +65,11 @@ public class client {
             keyAgreement.init(clientDhKeyPair.getPrivate());
             keyAgreement.doPhase(serverDhPublicKey, true);
             byte[] sharedSecret = keyAgreement.generateSecret();
+            System.out.print("Shared secret bytes: ");
+            for (int i = 0; i < sharedSecret.length; i++) {
+            System.out.print(sharedSecret[i] + " ");
+            }
+            System.out.println("");
 
             // User inputed message
             Scanner scanner = new Scanner(System.in);
